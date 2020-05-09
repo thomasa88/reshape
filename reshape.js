@@ -296,6 +296,15 @@ function addRow(table, entry) {
   return r;
 }
 
+function rawEdit() {
+  let answer = prompt("Copy/paste. Note that inserting bad data will make ReShape work incorrectly. Settings are not saved until you click 'Save'.",
+                      JSON.stringify(reshape.keyTable));
+  if (answer) {
+    reshape.keyTable = JSON.parse(answer);
+    populateDialogTable();
+  }
+}
+
 function createDialog() {
   d=document.createElement('div');
   
@@ -321,36 +330,42 @@ function createDialog() {
   tableDiv.style.overflowY = 'auto';
   tableDiv.style.marginBottom = '15px';
   tableDiv.style.marginTop = '10px';
-  t=document.createElement('table');
-  header = t.insertRow(-1);
+  reshape.dialogTable=document.createElement('table');
+  let thead = document.createElement('thead');
+  header = thead.insertRow(-1);
   header.style.position = 'sticky';
   header.style.top = '0px';
   header.style.backgroundColor = 'white';
   header.style.zIndex = 10;
   header.style.height = '2em';
   header.innerHTML = '<th>Note</th><th>Listen for keys</th><th>Send keys</th><th>& Click on (CSS selector)</th><th></th>';
-  for (let entry of reshape.keyTable) {
-    addRow(t, entry)
-  }
+  reshape.dialogTable.appendChild(thead);
+  populateDialogTable();
 
-  tableDiv.appendChild(t);
+  tableDiv.appendChild(reshape.dialogTable);
   d.appendChild(tableDiv)
 
   addButton = document.createElement('input');
   addButton.type = 'button';
-  addButton.value = 'Add';
+  addButton.value = 'Add Key';
   addButton.onclick = function(e) {
     let entry = {
       'old': { 'shift': false, 'keycode': null, 'keysym': null },
       'new': { 'shift': false, 'keycode': null, 'keysym': null }
     };
     reshape.keyTable.push(entry)
-    addRow(t, entry).scrollIntoView();
+    addRow(reshape.dialogTable, entry).scrollIntoView();
   }
   d.appendChild(addButton);
 
   tipText = document.createTextNode(' Right click on keys to set custom keycode.')
   d.appendChild(tipText);
+  
+  rawButton = document.createElement('input');
+  rawButton.type = 'button';
+  rawButton.value = 'Edit Raw';
+  rawButton.onclick = rawEdit;
+  d.appendChild(rawButton);
 
   closeButton = document.createElement('input');
   closeButton.type = 'button';
@@ -362,6 +377,19 @@ function createDialog() {
     packKeymap();
     reshape.editMode = false;
   }
+  
   d.appendChild(closeButton);
   return d;
 }
+
+function populateDialogTable() {
+  if (reshape.dialogTable.tBodies.length > 0) {
+    reshape.dialogTable.removeChild(reshape.dialogTable.tBodies[0]);
+  }
+  let tbody = document.createElement('tbody');
+  reshape.dialogTable.appendChild(tbody);
+  for (let entry of reshape.keyTable) {
+    addRow(tbody, entry);
+  }
+}
+
