@@ -1,10 +1,14 @@
+
 SHIFT = 0x1000
 
 if (typeof keyTable === 'undefined') {
 keyTable = [];
-keyTable.push( {'old':
-                { 'shift': false, 'keycode': 65}, 'new':
-                  {'shift': true, 'keycode': 83}});
+}
+
+function logKey(event) {
+  console.log(event.which, event.keyCode,
+             event.shiftKey, event.key,
+             String.fromCharCode(event.which))
 }
   
 function packKeyinfo(keyinfo) {
@@ -21,7 +25,7 @@ function packKeymap() {
   sKEYMAP.clear();
   for (let entry of keyTable) {
     if (entry.old.keycode != null && entry.new.keycode != null) {
-    	sKEYMAP.set(packKeyinfo(entry.old), packKeyinfo(entry.new));
+    	sKEYMAP.set(packKeyinfo(entry.old), entry);
     }
   }
 }
@@ -39,21 +43,33 @@ console.log(jQuery.fn.jquery)
 function wrap(e, handler) {
   // NOTE: This function is called for each handler for each key press.
   //e.keyCode=83;e.which=83;e.key="s";
+  logKey(e)
   packed = e.which | (e.shiftKey ? SHIFT : 0);
   if (!editMode) {
-    n = sKEYMAP.get(packed);
-    console.log("MATCH", n)
-    if (n) {
-      console.log("R");
-      e.which = n & ~SHIFT;
-      e.shiftKey = ((n & SHIFT) != 0);
+    let keyinfo = sKEYMAP.get(packed);
+    if (keyinfo) {
+      console.log((e.shiftKey ? 'shift+' : '' ) + e.key + '(' + e.which + ') -> ' + (keyinfo.new.shift ? 'shift+' : '' ) + keyinfo.new.keysym + ' (' + keyinfo.new.keycode + ')');
+      e.which = keyinfo.new.keycode;
+      e.shiftKey = keyinfo.new.shift;
+      logKey(e)
     }
   	handler(e);
+    if (keyinfo && keyinfo.clickSelector) {
+      setTimeout(() => {
+        console.log("INFO", keyinfo)
+        let clickTarget = document.querySelector(keyinfo.clickSelector);
+      	if (clickTarget) {
+          clickTarget.click()
+        } else {
+        	console.log("No match for click selector:",
+                	    keyinfo.clickSelector);
+      	}}, 100);
+    }
   } else {
-    trans.set(e.which, e.key);
-    if (remapTarget && e.keyCode != 16 /*shift key */) {
-    	//remapTarget.appendChild(keySpan('a')););
-      remapTarget(unpackKeyinfo(packed));
+    //trans.set(e.which, e.key);
+    if (remapTarget && e.which != 16 /*shift key */ && e.which != 18 /* altgr */ && e.which != 17 /* ctrl */) {
+      keyinfo = { 'shift': e.shiftKey, 'keycode': e.which, 'keysym': e.key };
+      remapTarget(keyinfo);
       remapTarget = undefined;
     }
   }
@@ -91,7 +107,7 @@ function keyCell(cell, keyinfo) {
   if (!keyinfo.shift) {
     shiftSpan.style.opacity = '0.3';
   }
-  let basekeySpan = keySpan(getKeysym(keyinfo.keycode));
+  let basekeySpan = keySpan(keyText(keyinfo));
   // E.g. "Escape" takes up more space than one letter
   //basekeySpan.style.width = '20px';
  	cell.appendChild(basekeySpan);
@@ -102,16 +118,14 @@ function keyCell(cell, keyinfo) {
   return [shiftSpan, basekeySpan]
 }
 
-function getKeysym(keycode) {
-  if (keycode === null) {
+function keyText(keyinfo) {
+  if (keyinfo.keysym == null) {
     return '<Unset>';
   }
-  if (trans.has(keycode)) {
-    key = trans.get(keycode);
-  } else {
-    key = "<" + keycode + ">";
+  if (keyinfo.keysym == ' ') {
+    return 'Space';
   }
-  return key;
+  return keyinfo.keysym;
 }
 
 function toggleShift(keyinfo, shiftSpan) {
@@ -128,18 +142,48 @@ function startRemappingKey(keyinfo, basekeySpan) {
   remapTarget = function(pressKeyinfo) {
     remapTarget = undefined;
     keyinfo.keycode = pressKeyinfo.keycode;
-    basekeySpan.innerText = getKeysym(keyinfo.keycode);
+    keyinfo.keysym = pressKeyinfo.keysym;
+    basekeySpan.innerText = keyText(keyinfo);
   }
+}
+
+function changeValue(entry, member, input) {
+  entry[member] = input.value;
 }
 
 function addRow(table, entry) {
   let r = table.insertRow(-1);
   r.style.lineHeight = '25px';
   
+  let noteCell = r.insertCell(-1);
+  noteCell.style.display = 'inline-flex';
+	let noteText = document.createElement('input');
+  noteText.type = 'text';
+  noteText.style.lineHeight = '10px';
+  noteText.style.width = '100px';
+  if (entry.note) {
+  	noteText.value = entry.note;
+  }
+  noteText.onchange = () => changeValue(entry, 'note', noteText);
+  noteCell.appendChild(noteText);
+  
   let oldCell = r.insertCell(-1);
   keyCell(oldCell, entry.old);
   let newCell = r.insertCell(-1);
   keyCell(newCell, entry.new);
+  
+  let clickCell = r.insertCell(-1);
+  clickCell.style.display = 'inline-flex';
+	let clickText = document.createElement('input');
+  clickText.type = 'text';
+  clickText.style.lineHeight = '10px';
+  clickText.style.width = '100px';
+  if (entry.clickSelector) {
+  	clickText.value = entry.clickSelector;
+  }
+  clickText.onchange = () => changeClickSelector(entry, 'clickSelector', clickText);
+  clickCell.appendChild(clickText);
+  
   
   let removeCell = r.insertCell(-1);
   // Center button vertically
@@ -175,7 +219,7 @@ d.style.backgroundColor = 'white';
 d.style.border = '1px silver solid';
 d.style.padding = '5px';
 // Need space for keys such as "ArrowDown"
-d.style.width = '300px';
+d.style.width = '550px';
 d.style.height = '400px';
 tableDiv = document.createElement('div');
 tableDiv.style.height = '300px';
@@ -189,7 +233,7 @@ header.style.top = '0px';
 header.style.backgroundColor = 'white';
 header.style.zIndex = 10;
 header.style.height = '2em';
-header.innerHTML = '<th>Original</th><th>Replacement</th><th></th>';
+header.innerHTML = '<th>Note</th><th>Hotkey</th><th>Send</th><th>Click Selector</th><th></th>';
 for (let entry of keyTable) {
   addRow(t, entry)
 }
@@ -202,8 +246,8 @@ addButton.type = 'button';
 addButton.value = 'Add';
 addButton.onclick = function(e) {
   let entry = {
-    'old': { 'shift': false, 'keycode': null },
-    'new': { 'shift': false, 'keycode': null }
+    'old': { 'shift': false, 'keycode': null, 'keysym': null },
+    'new': { 'shift': false, 'keycode': null, 'keysym': null }
   };
   keyTable.push(entry)
   addRow(t, entry).scrollIntoView();
