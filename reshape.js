@@ -17,14 +17,73 @@
 
 SHIFT = 0x1000
 
-if (typeof keyTable === 'undefined') {
-keyTable = [];
+reshapeToggle = function () {
+  reshape.editMode = !reshape.editMode;
+  if (!reshape.editMode) {
+    document.body.removeChild(reshape.reshapeDialog);
+  } else {
+    document.body.appendChild(reshape.reshapeDialog);
+  };
+}
+
+if (typeof reshapeLoaded === 'undefined') {
+  reshape = {};
+  loadKeyTable();
+  reshape.keymap = new Map();
+  packKeymap();
+  reshape.editMode = false;
+  reshape.remapTarget = undefined;
+  reshape.reshapeDialog = createDialog();
+  addToggleButton(document.body, true);
+  wrapEvents();
+  reshapeLoaded = true;
+} else {
+  reshapeToggle();
+}
+
+function loadKeyTable() {
+  let json = localStorage.getItem('reshape-keytable');
+  if (json == null) {
+    reshape.keyTable = [];
+  } else {
+    reshape.keyTable = JSON.parse(json);
+  }
+}
+
+function storeKeyTable() {
+  localStorage.setItem('reshape-keytable', JSON.stringify(reshape.keyTable));
+}
+
+function addToggleButton(target, dock) {
+  let toggleDiv = document.createElement('div');
+  toggleDiv.innerHTML = '↬';
+  
+  let toggleStyle = toggleDiv.style;
+  if (dock) {
+    toggleStyle.position = 'fixed';
+    toggleStyle.bottom = 0;
+    toggleStyle.right = 0;
+  } else {
+    toggleStyle.margin = '5px';
+    toggleStyle.display = 'inline-block';
+  }
+  toggleStyle.background = 'red';
+  toggleStyle.fontSize = '20px';
+  toggleStyle.clipPath = 'circle()';
+  toggleStyle.width = '20px';
+  toggleStyle.height = '20px';
+  toggleStyle.textAlign = 'center';
+  toggleStyle.lineHeight = '16px';
+  toggleStyle.cursor = 'pointer';
+  
+  toggleDiv.onclick = reshapeToggle;
+  target.appendChild(toggleDiv);
 }
 
 function logKey(event) {
   console.log(event.which, event.keyCode,
-             event.shiftKey, event.key,
-             String.fromCharCode(event.which))
+              event.shiftKey, event.key,
+              String.fromCharCode(event.which));
 }
   
 function packKeyinfo(keyinfo) {
@@ -36,43 +95,33 @@ function unpackKeyinfo(packed) {
          	 'keycode': packed & ~SHIFT};
 }
 
-sKEYMAP = new Map();
+
 function packKeymap() {
-  sKEYMAP.clear();
-  for (let entry of keyTable) {
+  reshape.keymap.clear();
+  for (let entry of reshape.keyTable) {
     if (entry.old.keycode != null && entry.new.keycode != null) {
-    	sKEYMAP.set(packKeyinfo(entry.old), entry);
+    	reshape.keymap.set(packKeyinfo(entry.old), entry);
     }
   }
 }
-packKeymap();
 
-editMode = true;
-remapTarget = undefined;
 
-if (typeof trans === 'undefined') {
-	trans = new Map();
-}
-
-console.log(jQuery.fn.jquery)
 
 function wrap(e, handler) {
   // NOTE: This function is called for each handler for each key press.
   //e.keyCode=83;e.which=83;e.key="s";
-  logKey(e)
   packed = e.which | (e.shiftKey ? SHIFT : 0);
-  if (!editMode) {
-    let keyinfo = sKEYMAP.get(packed);
+  if (!reshape.editMode) {
+    let keyinfo = reshape.keymap.get(packed);
     if (keyinfo) {
       console.log((e.shiftKey ? 'shift+' : '' ) + e.key + '(' + e.which + ') -> ' + (keyinfo.new.shift ? 'shift+' : '' ) + keyinfo.new.keysym + ' (' + keyinfo.new.keycode + ')');
       e.which = keyinfo.new.keycode;
       e.shiftKey = keyinfo.new.shift;
-      logKey(e)
+      //logKey(e)
     }
   	handler(e);
     if (keyinfo && keyinfo.clickSelector) {
       setTimeout(() => {
-        console.log("INFO", keyinfo)
         let clickTarget = document.querySelector(keyinfo.clickSelector);
       	if (clickTarget) {
           clickTarget.click()
@@ -82,20 +131,18 @@ function wrap(e, handler) {
       	}}, 100);
     }
   } else {
-    //trans.set(e.which, e.key);
-    if (remapTarget && e.which != 16 /*shift key */ && e.which != 18 /* altgr */ && e.which != 17 /* ctrl */ && !e.shiftKey /* We only want the keysym from the non-shifted key */) {
+    if (reshape.remapTarget && e.which != 16 /*shift key */ && e.which != 18 /* altgr */ && e.which != 17 /* ctrl */ && !e.shiftKey /* We only want the keysym from the non-shifted key */) {
       keyinfo = { 'shift': e.shiftKey, 'keycode': e.which, 'keysym': e.key };
-      remapTarget(keyinfo);
-      remapTarget = undefined;
+      reshape.remapTarget(keyinfo);
+      reshape.remapTarget = undefined;
     }
   }
 }
 
 
-if (typeof eventsWrapped === 'undefined') {
-  eventsWrapped = true;
-  j=$._data(document, 'events')
-  j.keydown.forEach((jevent, i) => {
+function wrapEvents() {
+  let documentEvents = $._data(document, 'events');
+  documentEvents.keydown.forEach((jevent) => {
     let h = jevent.handler;
     jevent.handler = (e => wrap(e, h));
    });
@@ -162,8 +209,8 @@ function toggleShift(keyinfo, shiftSpan) {
 
 function startRemappingKey(keyinfo, basekeySpan) {
   basekeySpan.innerHTML = '&nbsp;';
-  remapTarget = function(pressKeyinfo) {
-    remapTarget = undefined;
+  reshape.remapTarget = function(pressKeyinfo) {
+    reshape.remapTarget = undefined;
     keyinfo.keycode = pressKeyinfo.keycode;
     keyinfo.keysym = pressKeyinfo.keysym;
     basekeySpan.innerText = keyText(keyinfo);
@@ -171,7 +218,7 @@ function startRemappingKey(keyinfo, basekeySpan) {
 }
 
 function remapKeyWithCode(keyinfo, basekeySpan) {
-  remapTarget = undefined;
+  reshape.remapTarget = undefined;
   let origKeycode = keyinfo.keycode;
   if (origKeycode === null) {
     origKeycode = '';
@@ -241,83 +288,80 @@ function addRow(table, entry) {
   removeButton.style.lineHeight = 'normal';
   removeCell.appendChild(removeButton);
   removeButton.onclick = function(e) {
-    let pos = keyTable.indexOf(entry);
-    keyTable.splice(pos, 1);
-    console.log("R", r, table)
+    let pos = reshape.keyTable.indexOf(entry);
+    reshape.keyTable.splice(pos, 1);
     table.tBodies[0].removeChild(r);
   };
   
   return r;
 }
 
-oldForm = document.getElementById('reshape-form');
-if (oldForm != null) {
-  document.body.removeChild(oldForm);
+function createDialog() {
+  d=document.createElement('div');
+  
+  addToggleButton(d);
+  
+  let titleSpan = document.createElement('span');
+  titleSpan.innerText = 'ReShape';
+  titleSpan.style.fontSize = '16px';
+  d.appendChild(titleSpan);
+  
+  d.id = 'reshape-form'
+  d.style.position = 'absolute';
+  d.style.left = '200px';
+  d.style.top = '100px';
+  d.style.backgroundColor = 'white';
+  d.style.border = '1px silver solid';
+  d.style.padding = '5px';
+  // Need space for keys such as "ArrowDown"
+  d.style.width = '600px';
+  d.style.height = '400px';
+  tableDiv = document.createElement('div');
+  tableDiv.style.height = '300px';
+  tableDiv.style.overflowY = 'auto';
+  tableDiv.style.marginBottom = '15px';
+  tableDiv.style.marginTop = '10px';
+  t=document.createElement('table');
+  header = t.insertRow(-1);
+  header.style.position = 'sticky';
+  header.style.top = '0px';
+  header.style.backgroundColor = 'white';
+  header.style.zIndex = 10;
+  header.style.height = '2em';
+  header.innerHTML = '<th>Note</th><th>Listen for keys</th><th>Send keys</th><th>& Click on (CSS selector)</th><th></th>';
+  for (let entry of reshape.keyTable) {
+    addRow(t, entry)
+  }
+
+  tableDiv.appendChild(t);
+  d.appendChild(tableDiv)
+
+  addButton = document.createElement('input');
+  addButton.type = 'button';
+  addButton.value = 'Add';
+  addButton.onclick = function(e) {
+    let entry = {
+      'old': { 'shift': false, 'keycode': null, 'keysym': null },
+      'new': { 'shift': false, 'keycode': null, 'keysym': null }
+    };
+    reshape.keyTable.push(entry)
+    addRow(t, entry).scrollIntoView();
+  }
+  d.appendChild(addButton);
+
+  tipText = document.createTextNode(' Right click on keys to set custom keycode.')
+  d.appendChild(tipText);
+
+  closeButton = document.createElement('input');
+  closeButton.type = 'button';
+  closeButton.value = 'Save';
+  closeButton.style.float = 'right';
+  closeButton.onclick = function(e) {
+    document.body.removeChild(d);
+    storeKeyTable();
+    packKeymap();
+    reshape.editMode = false;
+  }
+  d.appendChild(closeButton);
+  return d;
 }
-
-d=document.createElement('div');
-d.innerText = 'ReShape';
-//d.style.zIndex = 1;
-d.id = 'reshape-form'
-d.style.position = 'absolute';
-d.style.left = '200px';
-d.style.top = '100px';
-d.style.backgroundColor = 'white';
-d.style.border = '1px silver solid';
-d.style.padding = '5px';
-// Need space for keys such as "ArrowDown"
-d.style.width = '600px';
-d.style.height = '400px';
-tableDiv = document.createElement('div');
-tableDiv.style.height = '300px';
-tableDiv.style.overflowY = 'auto';
-tableDiv.style.marginBottom = '15px';
-tableDiv.style.marginTop = '10px';
-t=document.createElement('table');
-header = t.insertRow(-1);
-header.style.position = 'sticky';
-header.style.top = '0px';
-header.style.backgroundColor = 'white';
-header.style.zIndex = 10;
-header.style.height = '2em';
-header.innerHTML = '<th>Note</th><th>Listen for keys</th><th>Send keys</th><th>& Click on (CSS selector)</th><th></th>';
-for (let entry of keyTable) {
-  addRow(t, entry)
-}
-
-tableDiv.appendChild(t);
-d.appendChild(tableDiv)
-
-addButton = document.createElement('input');
-addButton.type = 'button';
-addButton.value = 'Add';
-addButton.onclick = function(e) {
-  let entry = {
-    'old': { 'shift': false, 'keycode': null, 'keysym': null },
-    'new': { 'shift': false, 'keycode': null, 'keysym': null }
-  };
-  keyTable.push(entry)
-  addRow(t, entry).scrollIntoView();
-}
-d.appendChild(addButton);
-
-tipText = document.createTextNode(' Right click on keys to set custom keycode.')
-d.appendChild(tipText);
-
-closeButton = document.createElement('input');
-closeButton.type = 'button';
-closeButton.value = 'Save';
-closeButton.style.float = 'right';
-closeButton.onclick = function(e) {
-  document.body.removeChild(d);
-  packKeymap();
-  editMode = false;
-}
-d.appendChild(closeButton);
-d
-window.d = d
-if (editMode) {
-document.body.appendChild(d)
-}
-
-keyTable
