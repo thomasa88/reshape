@@ -1,3 +1,19 @@
+//
+// Copyright (C) 2020  Thomas Axelsson
+// 
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
 
 SHIFT = 0x1000
 
@@ -67,7 +83,7 @@ function wrap(e, handler) {
     }
   } else {
     //trans.set(e.which, e.key);
-    if (remapTarget && e.which != 16 /*shift key */ && e.which != 18 /* altgr */ && e.which != 17 /* ctrl */) {
+    if (remapTarget && e.which != 16 /*shift key */ && e.which != 18 /* altgr */ && e.which != 17 /* ctrl */ && !e.shiftKey /* We only want the keysym from the non-shifted key */) {
       keyinfo = { 'shift': e.shiftKey, 'keycode': e.which, 'keysym': e.key };
       remapTarget(keyinfo);
       remapTarget = undefined;
@@ -113,6 +129,7 @@ function keyCell(cell, keyinfo) {
  	cell.appendChild(basekeySpan);
   
   basekeySpan.onclick = e => startRemappingKey(keyinfo, basekeySpan);
+  basekeySpan.oncontextmenu = e => remapKeyWithCode(keyinfo, basekeySpan);
   shiftSpan.onclick = e => toggleShift(keyinfo, shiftSpan);
   
   return [shiftSpan, basekeySpan]
@@ -122,10 +139,16 @@ function keyText(keyinfo) {
   if (keyinfo.keysym == null) {
     return '<Unset>';
   }
+  //return String.fromCharCode(keyinfo.keycode);
+  
+  let text = keyinfo.keysym;
   if (keyinfo.keysym == ' ') {
-    return 'Space';
+    text = 'Space';
+  } else if (keyinfo.keysym.length == 1) {
+    /* One letter */
+    text = keyinfo.keysym.toUpperCase();
   }
-  return keyinfo.keysym;
+  return text + ' <' + keyinfo.keycode + '>';
 }
 
 function toggleShift(keyinfo, shiftSpan) {
@@ -145,6 +168,30 @@ function startRemappingKey(keyinfo, basekeySpan) {
     keyinfo.keysym = pressKeyinfo.keysym;
     basekeySpan.innerText = keyText(keyinfo);
   }
+}
+
+function remapKeyWithCode(keyinfo, basekeySpan) {
+  remapTarget = undefined;
+  let origKeycode = keyinfo.keycode;
+  if (origKeycode === null) {
+    origKeycode = '';
+  }
+  while (true) {
+    let answer = prompt("Enter the keycode", origKeycode);
+    if (!answer) {
+      break;
+    } 
+    let keycode = parseInt(answer);
+    if (isNaN(keycode)) {
+      alert("Keycode must be a number");
+      continue;
+    }
+    keyinfo.keycode = keycode;
+    keyinfo.keysym = '';
+    basekeySpan.innerText = keyText(keyinfo);
+    break;
+  }
+  return false;
 }
 
 function changeValue(entry, member, input) {
@@ -181,7 +228,7 @@ function addRow(table, entry) {
   if (entry.clickSelector) {
   	clickText.value = entry.clickSelector;
   }
-  clickText.onchange = () => changeClickSelector(entry, 'clickSelector', clickText);
+  clickText.onchange = () => changeValue(entry, 'clickSelector', clickText);
   clickCell.appendChild(clickText);
   
   
@@ -219,7 +266,7 @@ d.style.backgroundColor = 'white';
 d.style.border = '1px silver solid';
 d.style.padding = '5px';
 // Need space for keys such as "ArrowDown"
-d.style.width = '550px';
+d.style.width = '600px';
 d.style.height = '400px';
 tableDiv = document.createElement('div');
 tableDiv.style.height = '300px';
@@ -233,7 +280,7 @@ header.style.top = '0px';
 header.style.backgroundColor = 'white';
 header.style.zIndex = 10;
 header.style.height = '2em';
-header.innerHTML = '<th>Note</th><th>Hotkey</th><th>Send</th><th>Click Selector</th><th></th>';
+header.innerHTML = '<th>Note</th><th>Listen for keys</th><th>Send keys</th><th>& Click on (CSS selector)</th><th></th>';
 for (let entry of keyTable) {
   addRow(t, entry)
 }
@@ -254,9 +301,12 @@ addButton.onclick = function(e) {
 }
 d.appendChild(addButton);
 
+tipText = document.createTextNode(' Right click on keys to set custom keycode.')
+d.appendChild(tipText);
+
 closeButton = document.createElement('input');
 closeButton.type = 'button';
-closeButton.value = 'Close';
+closeButton.value = 'Save';
 closeButton.style.float = 'right';
 closeButton.onclick = function(e) {
   document.body.removeChild(d);
