@@ -1,0 +1,15 @@
+{
+  "name": "reshape",
+  "version": "1.0.0",
+  "description": "",
+  "main": "reshape.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Thomas Axelsson",
+  "license": "GPL-3.0+",
+  "dependencies": {},
+  "devDependencies": {
+    "uglify-es": "^3.3.9"
+  }
+}
