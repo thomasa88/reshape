@@ -40,7 +40,12 @@ echo 'reshapeInitWhenStable();'
 ) > output/reshape-$VERSION.user.js
 cp output/reshape-$VERSION.user.js output/reshape-latest.user.js
 
+# Publish #
+
 cp reshape.js docs/reshape-latest.js
+cp output/reshape-$VERSION.user.js releases
+cp output/reshape-latest.user.js releases
+cp output/reshape-$VERSION-bookmarklet.js releases
 
 (
     echo -n '<!-- BOOKMARKLET LINK --><a href="'

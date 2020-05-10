@@ -300,8 +300,8 @@ function changeValue(entry, member, input) {
   entry[member] = input.value;
 }
 
-function addRow(table, entry) {
-  let r = table.insertRow(-1);
+function addRow(tbody, entry) {
+  let r = tbody.insertRow(-1);
   r.style.lineHeight = '25px';
   
   let noteCell = r.insertCell(-1);
@@ -345,7 +345,7 @@ function addRow(table, entry) {
   removeButton.onclick = function(e) {
     let pos = reshape.keyTable.indexOf(entry);
     reshape.keyTable.splice(pos, 1);
-    table.tBodies[0].removeChild(r);
+    tbody.removeChild(r);
   };
   
   return r;
@@ -410,7 +410,7 @@ function createDialog() {
       'new': { 'shift': false, 'keycode': null, 'keysym': null }
     };
     reshape.keyTable.push(entry)
-    addRow(reshape.dialogTable, entry).scrollIntoView();
+    addRow(reshape.dialogTable.tBodies[0], entry).scrollIntoView();
   }
   d.appendChild(addButton);
 
