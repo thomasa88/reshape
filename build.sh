@@ -34,3 +34,5 @@ cat reshape.js | sed "s/<VERSION>/$VERSION/"
 echo 'reshapeInitWhenStable();'
 ) > output/reshape-$VERSION.user.js
 cp output/reshape-$VERSION.user.js output/reshape-latest.user.js
+
+cp reshape.js docs/reshape-latest.js
