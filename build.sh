@@ -36,3 +36,4 @@ echo 'reshapeInitWhenStable();'
 cp output/reshape-$VERSION.user.js output/reshape-latest.user.js
 
 cp reshape.js docs/reshape-latest.js
+cp output/reshape-$VERSION-bookmarklet.js docs/_includes/reshape-latest-bookmarklet.js
