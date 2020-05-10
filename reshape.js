@@ -209,11 +209,10 @@ function keySpan(text) {
   span.style.cursor = 'pointer';
   span.style.border = '1px solid gray';
   span.style.backgroundColor = '#eeeeee';
-  span.style.padding = '2px 5px 2px 5px';
   span.style.fontSize = '10px';
-  span.style.height = '18px';
-  span.style.lineHeight = '12px';
-  span.style.height = '12px';
+  span.style.height = '16px';
+  span.style.lineHeight = '16px';
+  span.style.padding = '0px 5px 0px 5px';
   span.style.display = 'inline-block';
   span.style.textAlign = 'center';
   return span;
