@@ -367,7 +367,7 @@ function createDialog() {
   d.appendChild(reshapeLogo());
   
   let titleSpan = document.createElement('span');
-  titleSpan.innerText = 'ReShape';
+  titleSpan.innerHTML = 'ReShape <VERSION>';
   titleSpan.style.fontSize = '16px';
   d.appendChild(titleSpan);
   

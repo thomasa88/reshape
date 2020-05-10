@@ -4,16 +4,20 @@ set -e
 
 VERSION=1.0
 
+echo "Version: $VERSION"
+
+mkdir -p output
+
 # Instead of reserving properties from mangling, it is possible to tell uglify-es to skip mangling all quoted propertes (e.g. $_['_data'])
 # Something breaks --wrap reshape. Results in very short output.
 # Need to protect all properties that are stored in JSON if we want to mangle-props. --mangle-props "reserved=['_data', 'handler', 'keydown']"
-node_modules/.bin/uglifyjs --compress --mangle "reserved=['$', 'jQuery']" --rename -- reshape.js > reshape-compressed.js
+cat reshape.js | sed "s/<VERSION>/$VERSION/" | node_modules/.bin/uglifyjs --compress --mangle "reserved=['$', 'jQuery']" --rename > output/reshape-$VERSION-compressed.js
 
 (
 echo -n 'javascript:'
-cat reshape-compressed.js | head -c -1
+cat output/reshape-$VERSION-compressed.js | head -c -1
 echo 'reshapeInit();void(0)'
-) > reshape-bookmarklet.js
+) > output/reshape-$VERSION-bookmarklet.js
 
 (
 cat <<EOF
@@ -28,6 +32,6 @@ cat <<EOF
 // @description 5/9/2020, 7:54:47 PM
 // ==/UserScript==
 EOF
-cat reshape.js
+cat reshape.js | sed "s/<VERSION>/$VERSION/"
 echo 'reshapeInitWhenStable();'
-) > reshape.user.js
+) > output/reshape-$VERSION.user.js
