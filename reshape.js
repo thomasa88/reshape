@@ -15,30 +15,80 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
 
+
+// jQuery license:
+//
+// Copyright JS Foundation and other contributors, https://js.foundation/
+// 
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+// 
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+
 SHIFT = 0x1000
 
 reshapeToggle = function () {
-  reshape.editMode = !reshape.editMode;
-  if (!reshape.editMode) {
-    document.body.removeChild(reshape.reshapeDialog);
+  //reshape.editMode = !reshape.editMode;
+  if (reshape.editMode) {
+    // Need to figure out closing the box vs updating the keyTable vs saving the keyTable
+    //document.body.removeChild(reshape.reshapeDialog);
   } else {
+    reshape.editMode = true;
     document.body.appendChild(reshape.reshapeDialog);
   };
 }
 
-if (typeof reshapeLoaded === 'undefined') {
-  reshape = {};
-  loadKeyTable();
-  reshape.keymap = new Map();
-  packKeymap();
-  reshape.editMode = false;
-  reshape.remapTarget = undefined;
-  reshape.reshapeDialog = createDialog();
-  addToggleButton(document.body, true);
-  wrapEvents();
-  reshapeLoaded = true;
-} else {
-  reshapeToggle();
+var reshapeInit = function() {
+  if (typeof reshapeLoaded === 'undefined') {
+    reshape = {};
+    loadKeyTable();
+    reshape.keymap = new Map();
+    packKeymap();
+    reshape.editMode = false;
+    reshape.remapTarget = undefined;
+    reshape.reshapeDialog = createDialog();
+    addToggleButton(document.body, true);
+    wrapEvents();
+    reshapeLoaded = true;
+  } else {
+    reshapeToggle();
+  }
+}
+
+// TODO: Replace this by checking the event list now and then during run-time?
+var reshapeInitWhenStable = function() {
+  reshapeEventCount = 0;
+  let timeout = setTimeout(pollStable, 1000);
+  
+}
+
+function pollStable() {
+  let documentEvents = $._data(document, 'events');
+  console.log("POLL");
+  if (documentEvents && documentEvents.keydown && documentEvents.keydown.length > 0 && 
+      documentEvents.keydown.length == reshapeEventCount) {
+      console.log("STABLE", documentEvents.keydown.length);
+      reshapeInit();
+  } else {
+    console.log("WAIT");
+    reshapeEventCount = documentEvents.keydown.length;
+    setTimeout(pollStable, 1000);
+  }
 }
 
 function loadKeyTable() {
@@ -54,11 +104,18 @@ function storeKeyTable() {
   localStorage.setItem('reshape-keytable', JSON.stringify(reshape.keyTable));
 }
 
-function addToggleButton(target, dock) {
-  let toggleDiv = document.createElement('div');
-  toggleDiv.innerHTML = '↬';
+function addToggleButton(target) {
+  let toggleDiv = reshapeLogo(true);  
+  toggleDiv.style.cursor = 'pointer';
+  toggleDiv.onclick = reshapeToggle;
+  target.appendChild(toggleDiv);
+}
+
+var reshapeLogo = function(dock) {
+  let logoDiv = document.createElement('div');
+  logoDiv.innerHTML = '↬';
   
-  let toggleStyle = toggleDiv.style;
+  let toggleStyle = logoDiv.style;
   if (dock) {
     toggleStyle.position = 'fixed';
     toggleStyle.bottom = 0;
@@ -74,10 +131,8 @@ function addToggleButton(target, dock) {
   toggleStyle.height = '20px';
   toggleStyle.textAlign = 'center';
   toggleStyle.lineHeight = '16px';
-  toggleStyle.cursor = 'pointer';
   
-  toggleDiv.onclick = reshapeToggle;
-  target.appendChild(toggleDiv);
+  return logoDiv;
 }
 
 function logKey(event) {
@@ -308,7 +363,7 @@ function rawEdit() {
 function createDialog() {
   d=document.createElement('div');
   
-  addToggleButton(d);
+  d.appendChild(reshapeLogo());
   
   let titleSpan = document.createElement('span');
   titleSpan.innerText = 'ReShape';
@@ -316,8 +371,9 @@ function createDialog() {
   d.appendChild(titleSpan);
   
   d.id = 'reshape-form'
-  d.style.position = 'absolute';
-  d.style.left = '200px';
+  d.style.position = 'fixed';
+  d.style.marginLeft = 'auto';
+  d.style.marginRight = 'auto';
   d.style.top = '100px';
   d.style.backgroundColor = 'white';
   d.style.border = '1px silver solid';
@@ -358,7 +414,7 @@ function createDialog() {
   }
   d.appendChild(addButton);
 
-  tipText = document.createTextNode(' Right click on keys to set custom keycode.')
+  tipText = document.createTextNode(' Right click on keys to set custom keycode. ')
   d.appendChild(tipText);
   
   rawButton = document.createElement('input');
@@ -369,7 +425,7 @@ function createDialog() {
 
   closeButton = document.createElement('input');
   closeButton.type = 'button';
-  closeButton.value = 'Save';
+  closeButton.value = 'Save & Close';
   closeButton.style.float = 'right';
   closeButton.onclick = function(e) {
     document.body.removeChild(d);
@@ -392,4 +448,3 @@ function populateDialogTable() {
     addRow(tbody, entry);
   }
 }
-
