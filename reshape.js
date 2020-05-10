@@ -213,6 +213,7 @@ function keySpan(text) {
   span.style.fontSize = '10px';
   span.style.height = '18px';
   span.style.lineHeight = '12px';
+  span.style.height = '12px';
   span.style.display = 'inline-block';
   span.style.textAlign = 'center';
   return span;
