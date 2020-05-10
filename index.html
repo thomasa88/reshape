@@ -1,0 +1,124 @@
+<html>
+  <head>
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="reshape.js"></script>
+    <script>
+      var lastKeys = [];
+      $(document).keydown(function(e) {
+        lastKeys.push('<' + e.which + '>');
+        if (lastKeys.length > 10) {
+          lastKeys.splice(0, 1);
+        }
+        document.getElementById('keycode').innerText = lastKeys.join('\n');
+      });
+    </script>
+    <style>
+    pre { display: inline; }
+    </style>
+  </head>
+  <body onload="reshapeInit(); document.getElementById('reshape-button').appendChild(reshapeLogo()); document.getElementById('reshape-logo').appendChild(reshapeLogo());"
+  style="max-width: 600px; margin-left: auto; margin-right: auto;">
+    <h1 style="display: inline-flex;"><span id="reshape-logo"></span><span>ReShape</span></h1>
+    <p>
+    ReShape is intended for interactive webpage "applications". It replaces key presses with other key presses (e.g. A replaced with Shift+S). It can also accompany the key press with a mouse click on an element (selected with a <a href="https://www.w3schools.com/cssref/css_selectors.asp">CSS selector</a>).
+    </p>
+    <p>
+    ReShape currently only supports pages using jQuery, listening to key down events for the whole page.
+    <p>
+    <b>The settings for ReShape are stored in your browser, for each webpage where you use it. By using ReShape you agree to this.</b>
+    </p>
+    <p>
+    ReShape is licensed under GPLv3+. It uses jQuery for grabbing key presses.
+    </p>
+    <p>
+      <img src="docs/screenshot.png" style="width: 80%;">
+    </p>
+    <h2>Bookmarklet</h2>
+    <p>
+    Use the following bookmarklet to load ReShape using a bookmark.
+    </p>
+    <p>
+    <a href="releases/">ReShape</a>
+    </p>
+    <h2>Userscript</h2>
+    <p>
+    Use the following userscript to automatically load ReShape. The script is tested with ViolentMonkey.
+    </p>
+    <p>
+    <b>Warning! To know when the events of the webpage can be reconfigured, the userscript uses a simple polling mechanism, which is not guaranteed to work. reshapeInitWhenStable() can be tweaked for the webpage in question.</b>
+    </p>
+    <p>
+    Click the following link to add the userscript. Update <i>@match</i> with the URL of the webpage where you want to use ReShape.
+    </p>
+    <p>
+    <a href="release/.user.js">ReShape Userscript</a>
+    </p>
+    <h2>Live Example</h2>
+    <p>
+    The box below lists keys that have been pressed (try pressing a key!).
+    </p>
+    <p>
+    Click the ReShape button (<span id="reshape-button"></span>) on the bottom right of the browser window and map a key (e.g. A to S) and then try pressing keys again.
+    </p>
+    <div id="keycode" style="height: 140px; width: 3em; padding: 10px; font-size: 12px; line-height: 14px; background: #eee;">
+      Press a key!
+    </div>
+    <h3>Mouse Click</h3>
+    <p>
+    To click the button using a key, add a key mapping with:
+    <ul>
+    <li> Listen: C
+    <li> Send: .  (The button does not need a key, but one must currently be entered)
+    <li> Click: input[my-name="clickbutton"]
+    </ul>
+    <p>
+    <p>
+    The Click value was found by inspecting the element using the built-in web browser inspector (Ctrl+Shift+I) and writing a matching <a href="https://www.w3schools.com/cssref/css_selectors.asp">CSS selector</a>. Note that the element you want to click on must existing when the click is performed. The sent key can be used to bring up menus that contain elements to click.
+    </p>
+    <p>
+    <input type="button" my-name="clickbutton" value="Click me!" onclick="alert('Button clicked!')">
+    </p>
+    <h3>Custom keycode</h3>
+    <p>
+    The keycode for a key, in Javascript, matches the button that is pressed, without any modifiers. For example, <pre>5</pre> and <pre>%</pre> is on the same key on many keyboard layouts. Both <pre>5</pre> (press <pre>5</pre>) and <pre>%</pre> (press <pre>shift</pre>+<pre>5</pre>) results in the same keycode (<pre><53></pre>).
+    <p></p>
+    The keycode becomes a problem when a keyboard layout has a character only as the shift option on a key, but a webpage expects a dedicated key for the given character to exist.
+    <p></p>
+    Example: Swedish QWERTY has <pre>?</pre> as <pre>shift</pre>+<pre>+</pre> (<pre>shift</pre>+<pre><171></pre>), while US QWERTY has <pre>?</pre> as <pre>shift</pre>+<pre>/</pre> (<pre>shift</pre>+<pre><191></pre>). The webpage expects <pre>shift</pre>+<pre><191></pre>, but the Swedish user will press <pre>shift</pre>+<pre><171></pre>.
+    <p></p>
+    In this case, the Swedish user cannot press <pre>/</pre> to map to <pre><191></pre>, because no such key exists in the Swedish layout (<pre>shift</pre>+<pre>7</pre> (<pre>shift</pre>+<pre><55></pre>) is used for <pre>/</pre>).
+    <p></p>
+    To solve the problem in ReShape, the user can either change to a US layout, and press the key, or right-click on the key button in ReShape and enter the code <pre>191</pre> manually. He also needs to enable <pre>shift</pre> by pressing the <pre>shift</pre> button in ReShape.
+    </p>
+    <h1>Licenses</h1>
+      <p>ReShape is licensed under <a href="LICENSE">GPLv3+</a>.
+      
+      <p>Reshape uses jQuery, which is licensed under MIT license:
+      
+      <pre>
+Copyright JS Foundation and other contributors, https://js.foundation/
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+      </pre>
+      </p>
+    </p>
+  </body>
+</html>
