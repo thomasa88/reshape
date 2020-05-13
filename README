@@ -1,0 +1,7 @@
+Webpage:
+https://thomasa88.github.io/reshape/
+
+Building:
+
+npm install
+./build.sh <version>
