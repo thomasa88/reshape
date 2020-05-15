@@ -41,6 +41,8 @@
 //
 
 SHIFT = 0x1000
+CTRL =  0x2000
+ALT =   0x4000
 
 reshapeToggle = function () {
   //reshape.editMode = !reshape.editMode;
@@ -142,12 +144,18 @@ function logKey(event) {
 }
   
 function packKeyinfo(keyinfo) {
-  return keyinfo.keycode | (keyinfo.shift ? SHIFT : 0);
+  return keyinfo.keycode | (keyinfo.shift ? SHIFT : 0) | (keyinfo.ctrl ? CTRL : 0) | (keyinfo.alt ? ALT : 0);
+}
+
+function packKeyevent(event) {
+  return event.which | (event.shiftKey ? SHIFT : 0) | (event.ctrlKey ? CTRL : 0) | (event.altKey ? ALT : 0);
 }
 
 function unpackKeyinfo(packed) {
   return { 'shift': (packed & SHIFT != 0),
-         	 'keycode': packed & ~SHIFT};
+           'ctrl': (packed & CTRL != 0),
+           'alt': (packed & ALT != 0),
+         	 'keycode': packed & ~SHIFT & ~CTRL & ~ALT};
 }
 
 
@@ -165,13 +173,16 @@ function packKeymap() {
 function wrap(e, handler) {
   // NOTE: This function is called for each handler for each key press.
   //e.keyCode=83;e.which=83;e.key="s";
-  packed = e.which | (e.shiftKey ? SHIFT : 0);
+  let packed = packKeyevent(e);
   if (!reshape.editMode) {
     let keyinfo = reshape.keymap.get(packed);
     if (keyinfo) {
       console.log((e.shiftKey ? 'shift+' : '' ) + e.key + '(' + e.which + ') -> ' + (keyinfo.new.shift ? 'shift+' : '' ) + keyinfo.new.keysym + ' (' + keyinfo.new.keycode + ')');
       e.which = keyinfo.new.keycode;
       e.shiftKey = keyinfo.new.shift;
+      /* !! for backwards-compatibility to handle keyinfos without the fields */
+      e.ctrlKey = !!keyinfo.new.ctrl;
+      e.altKey = !!keyinfo.new.alt;
       //logKey(e)
     }
   	handler(e);
@@ -186,8 +197,14 @@ function wrap(e, handler) {
       	}}, 100);
     }
   } else {
-    if (reshape.remapTarget && e.which != 16 /*shift key */ && e.which != 18 /* altgr */ && e.which != 17 /* ctrl */ && !e.shiftKey /* We only want the keysym from the non-shifted key */) {
-      keyinfo = { 'shift': e.shiftKey, 'keycode': e.which, 'keysym': e.key };
+    if (reshape.remapTarget &&
+        e.which != 16 /*shift key */ &&
+        e.which != 18 /* altgr */ &&
+        e.which != 17 /* ctrl */ &&
+        !e.shiftKey /* We only want the keysym from the non-shifted key */ &&
+        !e.ctrlKey &&
+        !e.altKey) {
+      keyinfo = { 'shift': e.shiftKey, 'ctrl': e.ctrlKey, 'alt': e.altKey, 'keycode': e.which, 'keysym': e.key };
       reshape.remapTarget(keyinfo);
       reshape.remapTarget = undefined;
     }
@@ -218,13 +235,20 @@ function keySpan(text) {
   return span;
 }
 
-function keyCell(cell, keyinfo) {
-  let text = '';
-  let shiftSpan = keySpan('shift');
-  cell.appendChild(shiftSpan)
-  if (!keyinfo.shift) {
-    shiftSpan.style.opacity = '0.3';
+function modifierSpan(name, keyinfo, member) {
+  let span = keySpan(name);
+  if (!keyinfo[member]) {
+    span.style.opacity = '0.3';
   }
+  span.onclick = e => toggleModifier(keyinfo, member, span);
+  return span;
+}
+
+function keyCell(cell, keyinfo) {
+  cell.appendChild(modifierSpan('ctrl', keyinfo, 'ctrl'));
+  cell.appendChild(modifierSpan('alt', keyinfo, 'alt'));
+  cell.appendChild(modifierSpan('shift', keyinfo, 'shift'));
+  
   let basekeySpan = keySpan(keyText(keyinfo));
   // E.g. "Escape" takes up more space than one letter
   //basekeySpan.style.width = '20px';
@@ -232,9 +256,6 @@ function keyCell(cell, keyinfo) {
   
   basekeySpan.onclick = e => startRemappingKey(keyinfo, basekeySpan);
   basekeySpan.oncontextmenu = e => remapKeyWithCode(keyinfo, basekeySpan);
-  shiftSpan.onclick = e => toggleShift(keyinfo, shiftSpan);
-  
-  return [shiftSpan, basekeySpan]
 }
 
 function keyText(keyinfo) {
@@ -253,12 +274,12 @@ function keyText(keyinfo) {
   return text + ' <' + keyinfo.keycode + '>';
 }
 
-function toggleShift(keyinfo, shiftSpan) {
-    keyinfo.shift = !keyinfo.shift;
-    if (keyinfo.shift) {
-      shiftSpan.style.opacity = '1';
+function toggleModifier(keyinfo, member, span) {
+    keyinfo[member] = !keyinfo[member];
+    if (keyinfo[member]) {
+      span.style.opacity = '1';
     } else {
-      shiftSpan.style.opacity = '0.3';
+      span.style.opacity = '0.3';
     }
 }
 
@@ -379,7 +400,7 @@ function createDialog() {
   d.style.border = '1px silver solid';
   d.style.padding = '5px';
   // Need space for keys such as "ArrowDown"
-  d.style.width = '600px';
+  d.style.width = '700px';
   d.style.height = '400px';
   tableDiv = document.createElement('div');
   tableDiv.style.height = '300px';
@@ -406,8 +427,8 @@ function createDialog() {
   addButton.value = 'Add Key';
   addButton.onclick = function(e) {
     let entry = {
-      'old': { 'shift': false, 'keycode': null, 'keysym': null },
-      'new': { 'shift': false, 'keycode': null, 'keysym': null }
+      'old': { 'shift': false, 'ctrl': false, 'alt': false, 'keycode': null, 'keysym': null },
+      'new': { 'shift': false, 'ctrl': false, 'alt': false, 'keycode': null, 'keysym': null }
     };
     reshape.keyTable.push(entry)
     addRow(reshape.dialogTable.tBodies[0], entry).scrollIntoView();
